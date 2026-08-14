@@ -25,6 +25,12 @@ Copy-Item config/model_paths.example.json config/model_paths.json
 
 浏览器打开 <http://127.0.0.1:8877>。
 
+### 一键安装并启动
+
+Windows 用户也可以直接双击 `install-and-start-windows.cmd`。它会自动创建项目专用 `.venv`、安装依赖、生成 `config/model_paths.json` 并启动网页。这个脚本不会下载或提交模型权重。
+
+如果使用 Codex，参见 [CODEX_DEPLOY.md](CODEX_DEPLOY.md)，把仓库链接和其中的部署提示一起发给 Codex 即可。
+
 ## macOS / Linux
 
 ```bash
