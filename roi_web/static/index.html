@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>ROI 勾画工作台</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260810.1">
+</head>
+<body>
+  <a class="skip-link" href="#viewer-workspace">跳到影像工作区</a>
+
+  <header class="app-header">
+    <div class="brand" aria-label="ROI 勾画工作台">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" focusable="false">
+          <path d="M6 16h5m10 0h5M16 6v5m0 10v5"/>
+          <path d="M11.5 9.5c3.4-2.5 8.4-1.2 10.2 2.6 1.8 3.7.1 8.3-3.8 9.8-3.8 1.5-8.2-.6-9.3-4.5-.8-2.9.3-5.9 2.9-7.9Z"/>
+        </svg>
+      </span>
+      <div class="brand-copy">
+        <span class="brand-eyebrow">LOCAL · CLINICAL IMAGING</span>
+        <strong>ROI 勾画工作台</strong>
+        <small>影像分割、参考与精修</small>
+      </div>
+    </div>
+
+    <div class="root-bar" aria-label="数据根目录">
+      <label class="root-field" for="root-path">
+        <span>数据根目录</span>
+        <input id="root-path" type="text" placeholder="例如 F:\附一原位" autocomplete="off" spellcheck="false">
+      </label>
+      <button id="scan-root" class="primary" type="button">扫描病例</button>
+    </div>
+
+    <div class="header-actions">
+      <label class="theme-field" for="theme-select">
+        <span>界面主题</span>
+        <select id="theme-select" aria-label="界面主题">
+          <option value="dark">深色阅片</option>
+          <option value="light">浅色工作</option>
+        </select>
+      </label>
+      <div id="connection" class="connection" aria-label="本地服务状态">
+        <span class="connection-dot" aria-hidden="true"></span>
+        <div><strong>本地模式</strong><small>影像不上传</small></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="module-switcher" aria-label="工作模块">
+    <div class="module-tabs" role="tablist" aria-label="切换标注模块">
+      <button id="roi-module-tab" class="module-tab active" type="button" role="tab" aria-selected="true" aria-controls="roi-module-panel" data-workbench-module="roi">
+        <span class="module-tab-index">01</span><span><b>肿瘤 ROI</b><small>勾画、提示与审核</small></span>
+      </button>
+    </div>
+    <p id="module-context" class="module-context">当前：肿瘤 ROI 勾画与确认</p>
+  </nav>
+
+  <main class="workspace">
+    <aside class="left-panel panel" aria-label="病例队列">
+      <div class="panel-heading">
+        <div>
+          <span class="panel-kicker">DATA QUEUE</span>
+          <h2>病例队列</h2>
+        </div>
+        <span id="case-count" class="badge" aria-label="病例数">0</span>
+      </div>
+      <p class="panel-intro">选择患者文件夹并载入影像或既有 ROI。</p>
+      <label class="search-field" for="case-search">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 4 4"/></svg>
+        <input id="case-search" class="full" type="search" placeholder="搜索患者、影像或 ROI" aria-label="搜索患者、影像或 ROI">
+      </label>
+      <label class="filter-field" for="status-filter">
+        <span>工作状态</span>
+        <select id="status-filter" class="full">
+          <option>全部</option><option>未开始</option><option>待审核</option><option>修补中</option><option>已完成</option><option>失败</option>
+        </select>
+      </label>
+      <label class="filter-field" for="roi-file-count-filter">
+        <span>ROI 文件数</span>
+        <select id="roi-file-count-filter" class="full">
+          <option value="all">全部</option>
+          <option value="6">6 个文件（已勾画）</option>
+          <option value="5">5 个文件（待勾画）</option>
+        </select>
+      </label>
+      <div id="case-list" class="case-list empty-state">
+        <div class="empty-list-copy"><strong>等待扫描</strong><span>从顶部选择数据根目录</span></div>
+      </div>
+    </aside>
+
+    <div id="left-panel-resizer" class="panel-resizer" data-panel-resizer="left" role="separator" aria-label="调整病例队列宽度" aria-orientation="vertical" aria-valuemin="210" aria-valuemax="520" aria-valuenow="256" tabindex="0" title="拖动调整左栏宽度；双击恢复默认"></div>
+
+    <section id="viewer-workspace" class="viewer-shell" tabindex="-1" aria-label="影像工作区">
+      <div id="standard-viewer-toolbar" class="viewer-toolbar">
+        <div class="toolbar-cluster orientation-cluster">
+          <span class="toolbar-label">视图</span>
+          <div id="orientation-tabs" class="segmented" aria-label="影像方向">
+            <button data-orientation="axial" class="active" type="button">轴位</button>
+            <button data-orientation="coronal" type="button">冠状位</button>
+            <button data-orientation="sagittal" type="button">矢状位</button>
+          </div>
+        </div>
+        <div class="toolbar-rule" aria-hidden="true"></div>
+        <div id="roi-edit-toolbar" class="toolbar-cluster edit-cluster">
+          <span class="toolbar-label">编辑工具</span>
+          <div id="tool-buttons" class="tool-strip">
+            <button data-tool="pan" class="active" title="拖动图像" type="button">平移</button>
+            <button data-tool="brush" type="button">画笔</button>
+            <button data-tool="eraser" type="button">橡皮</button>
+            <button data-tool="polygon" type="button">多边形</button>
+            <button data-tool="fill" type="button">填充</button>
+            <button data-tool="keep_component" title="当前层选择一个 ROI，并保留它的 3D 连通分支" type="button">选连通区</button>
+            <button data-tool="positive" type="button">正点</button>
+            <button data-tool="negative" type="button">负点</button>
+            <button data-tool="box" type="button">框选</button>
+            <button data-tool="lasso" type="button">AI 套索</button>
+          </div>
+        </div>
+        <div class="toolbar-rule" aria-hidden="true"></div>
+        <div class="toolbar-cluster render-cluster">
+          <span class="toolbar-label">三维</span>
+          <button id="render-3d" class="accent render-3d-button" type="button" disabled>3D 渲染</button>
+        </div>
+        <button id="reset-view" class="ghost reset-view" type="button">适应窗口</button>
+      </div>
+
+      <div id="visualization-layout" class="visualization-layout">
+        <div id="viewport" class="viewport">
+          <div id="viewport-empty" class="viewport-empty">
+            <svg class="viewport-empty-mark" viewBox="0 0 96 96" aria-hidden="true">
+              <path d="M29 19c16-10 38-2 45 15 7 18-2 38-20 44-18 6-38-4-43-23-4-14 3-29 18-36Z"/>
+              <path d="M48 9v19m0 40v19M9 48h19m40 0h19"/>
+              <circle cx="48" cy="48" r="6"/>
+            </svg>
+            <span class="empty-overline">READY FOR LOCAL REVIEW</span>
+            <strong>从病例队列载入影像</strong>
+            <span>源影像只读，所有编辑先进入本机内存工作层。</span>
+            <div class="privacy-note"><span aria-hidden="true"></span>本地处理 · 不上传</div>
+          </div>
+          <div id="viewport-content" class="viewport-content hidden">
+            <img id="slice-image" alt="医学影像切片" draggable="false">
+            <canvas id="interaction-canvas"></canvas>
+            <span id="marker-top" class="marker top">A</span><span id="marker-bottom" class="marker bottom">P</span>
+            <span id="marker-left" class="marker left">R</span><span id="marker-right" class="marker right">L</span>
+          </div>
+          <div id="loading" class="loading hidden" role="status" aria-live="polite"><span class="spinner"></span><b>正在读取</b></div>
+        </div>
+
+        <section id="roi-3d-panel" class="roi-3d-panel hidden" aria-label="已选择 ROI 三维预览">
+          <header class="roi-3d-header">
+            <div><span class="panel-kicker">CURRENT WORKSPACE</span><h2>3D ROI</h2></div>
+            <div class="roi-3d-actions">
+              <button id="reset-3d-view" class="ghost" type="button">重置视角</button>
+              <button id="close-3d" class="ghost" type="button">关闭 3D</button>
+            </div>
+          </header>
+          <section class="roi-3d-selector" aria-labelledby="roi-3d-selector-title">
+            <div class="roi-3d-selector-header">
+              <div><strong id="roi-3d-selector-title">选择 3D 显示 ROI</strong><span id="roi-3d-selection-count" class="mono">0 / 0</span></div>
+              <div class="roi-3d-selector-actions">
+                <button id="roi-3d-select-all" class="ghost" type="button">全部</button>
+                <button id="roi-3d-clear-all" class="ghost" type="button">清空</button>
+              </div>
+            </div>
+            <div id="roi-3d-roi-list" class="roi-3d-roi-list" role="group" aria-label="选择三维显示的 ROI">
+              <span class="roi-3d-selector-empty">载入病例后可选择 ROI</span>
+            </div>
+          </section>
+          <div id="roi-3d-stage" class="roi-3d-stage">
+            <canvas id="roi-3d-canvas" tabindex="0" aria-label="已选择 ROI 三维表面；拖拽旋转，滚轮缩放"></canvas>
+            <div id="roi-3d-empty" class="roi-3d-empty">
+              <svg viewBox="0 0 72 72" aria-hidden="true"><path d="m36 8 23 13v29L36 64 13 50V21Z"/><path d="m13 21 23 14 23-14M36 35v29"/></svg>
+              <strong>选择需要显示的 ROI</strong>
+              <span>在上方列表中可单选或多选，并为每个 ROI 设置独立颜色。</span>
+            </div>
+            <div id="roi-3d-loading" class="roi-3d-loading hidden" role="status" aria-live="polite"><span class="spinner"></span><b>正在生成三维表面</b></div>
+          </div>
+          <footer class="roi-3d-footer">
+            <label class="roi-3d-opacity-field" for="roi-3d-opacity"><span>透明度</span><input id="roi-3d-opacity" type="range" min="10" max="100" value="78"><output id="roi-3d-opacity-value" for="roi-3d-opacity">78%</output></label>
+            <span id="roi-3d-status" class="roi-3d-status" aria-live="polite">尚未生成</span>
+          </footer>
+        </section>
+
+      </div>
+
+      <div id="standard-viewer-footer" class="viewer-footer">
+        <div class="slice-control-group">
+          <button id="slice-prev" class="icon-button" type="button" aria-label="上一层">−</button>
+          <input id="slice-slider" type="range" min="0" max="0" value="0" aria-label="当前切片">
+          <button id="slice-next" class="icon-button" type="button" aria-label="下一层">＋</button>
+          <span id="slice-text" class="mono">0 / 0</span>
+        </div>
+        <span class="divider" aria-hidden="true"></span>
+        <span id="display-summary" class="display-summary">CT · W400/L40</span>
+        <span id="geometry-text" class="footer-status">未加载病例</span>
+      </div>
+    </section>
+
+    <div id="right-panel-resizer" class="panel-resizer" data-panel-resizer="right" role="separator" aria-label="调整编辑工具栏宽度" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="720" aria-valuenow="520" tabindex="0" title="拖动调整右栏宽度；双击恢复默认"></div>
+
+    <aside class="right-panel panel" aria-label="当前模块工具栏">
+      <section id="roi-module-panel" class="module-panel roi-module-panel" role="tabpanel" aria-labelledby="roi-module-tab">
+      <div class="workflow-overview">
+        <div class="workflow-heading">
+          <div><span class="panel-kicker">ROI WORKFLOW</span><h2>编辑流程</h2></div>
+          <span id="task-dot" class="task-dot" aria-label="模型任务状态"></span>
+        </div>
+        <div class="workflow-rail" role="list" aria-label="ROI 工作流状态">
+          <div id="workflow-case-step" class="workflow-step is-current" role="listitem"><span>1</span><b>影像</b></div>
+          <div id="workflow-reference-step" class="workflow-step" role="listitem"><span>2</span><b>来源</b></div>
+          <div id="workflow-edit-step" class="workflow-step" role="listitem"><span>3</span><b>编辑</b></div>
+          <div id="workflow-save-step" class="workflow-step" role="listitem"><span>4</span><b>保存</b></div>
+        </div>
+        <p id="workflow-caption" class="workflow-caption">先载入一个影像病例。</p>
+      </div>
+
+      <div class="right-panel-scroll">
+        <div class="workflow-column" role="group" aria-label="显示与 ROI 来源">
+        <details class="workflow-group" open>
+          <summary><span class="group-index">01</span><span><b>影像与显示</b><small>模态、窗宽窗位与视图固定</small></span></summary>
+          <div class="workflow-group-body">
+            <section class="control-section display-section">
+              <div class="section-title"><h3>显示参数</h3><span id="modality-badge" class="modality-badge">自动</span></div>
+              <label class="field-row"><span>显示模式</span><select id="modality-mode"><option value="auto">自动识别</option><option value="CT">CT</option><option value="MR">MR</option></select></label>
+              <div id="ct-display-controls" class="display-controls">
+                <label class="field-row"><span>CT 窗</span><select id="window-preset">
+                  <option value="40,400">软组织 W400/L40</option>
+                  <option value="50,350">腹窗 W350/L50</option>
+                  <option value="60,150">肝窗 W150/L60</option>
+                  <option value="-600,1500">肺窗 W1500/L-600</option>
+                  <option value="40,350">纵隔窗 W350/L40</option>
+                  <option value="500,2000">骨窗 W2000/L500</option>
+                  <option value="40,80">脑窗 W80/L40</option>
+                  <option value="75,400">CARE W400/L75</option>
+                  <option value="custom">自定义</option>
+                </select></label>
+                <div class="number-grid">
+                  <label><span>窗位 L</span><input id="window-level" type="number" value="40" step="1"></label>
+                  <label><span>窗宽 W</span><input id="window-width" type="number" value="400" min="1" step="1"></label>
+                </div>
+              </div>
+              <div id="mr-display-controls" class="display-controls hidden">
+                <div class="slider-row wide"><label for="mr-brightness">亮度</label><input id="mr-brightness" type="range" min="-100" max="100" value="0"><span id="mr-brightness-value">0</span></div>
+                <div class="slider-row wide"><label for="mr-contrast">对比度</label><input id="mr-contrast" type="range" min="25" max="300" value="100"><span id="mr-contrast-value">100%</span></div>
+                <p id="mr-window-hint" class="hint mono">显示范围：—</p>
+              </div>
+              <div class="button-row"><button id="pin-display" class="accent" type="button">固定当前显示</button><button id="clear-pinned-display" type="button" disabled>取消固定</button></div>
+              <button id="reset-display" class="full" type="button">恢复模态默认显示</button>
+              <p id="display-status" class="hint" aria-live="polite">显示参数只影响画面，不改变模型输入。</p>
+            </section>
+          </div>
+        </details>
+
+        <details class="workflow-group" open>
+          <summary><span class="group-index">02</span><span><b>ROI 来源与图层</b><small>参考、编辑起点与显示方式</small></span></summary>
+          <div class="workflow-group-body">
+            <section class="control-section">
+              <div class="section-title"><h3>来源与当前标签</h3></div>
+              <details class="control-expander" open>
+                <summary>选择患者文件夹中的 ROI</summary>
+                <div class="expander-body">
+                  <div id="roi-file-selection" class="roi-file-selection" role="group" aria-label="选择要同时显示的 ROI 文件"><p class="hint">当前患者没有可选 ROI 文件</p></div>
+                  <select id="mask-select" class="full" aria-label="患者文件夹中的 ROI 或 NIfTI 标签图"></select>
+                  <div class="button-row"><button id="import-mask" class="accent" type="button">只读参考</button><button id="load-editable-roi" class="primary" type="button">载入并编辑</button></div>
+                  <button id="load-interactive-reference" class="full accent" type="button">载入为 nnInteractive 参考</button>
+                  <p class="hint">勾选 1 个文件只显示该文件；勾选多个才叠加。勾选后点击“删除”可移至系统回收站；“载入并编辑”设置唯一写入目标。</p>
+                </div>
+              </details>
+              <label class="field-row"><span>当前标签</span><select id="label-select"></select></label>
+              <label class="field-row"><span>标签颜色</span><input id="label-color" type="color" value="#ff3b30" aria-label="当前ROI颜色"></label>
+              <label class="check-row"><input id="label-lock" type="checkbox"> 锁定当前标签</label>
+              <div class="slider-row"><label for="brush-size">笔刷</label><input id="brush-size" type="range" min="1" max="50" value="3"><span id="brush-size-value">3 px</span></div>
+            </section>
+
+            <section class="control-section">
+              <div class="section-title"><h3>图层显示</h3><span id="roi-visibility-count" class="badge">0 / 0</span></div>
+              <div class="slider-row opacity-row"><label for="roi-opacity">透明度</label><input id="roi-opacity" type="range" min="0" max="100" value="49"><input id="roi-opacity-number" type="number" min="0" max="100" value="49" aria-label="ROI透明度百分比"></div>
+              <details class="control-expander display-mode-expander" open>
+                <summary>显示方式</summary>
+                <div class="expander-body">
+                  <input id="overlay-mode" type="hidden" value="fill">
+                  <div id="overlay-mode-buttons" class="display-mode-buttons">
+                    <button type="button" class="active" data-overlay-mode="fill" title="显示完整实心ROI；不修改ROI数据"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4" width="12" height="12" rx="2"/><path d="M7 7h6v6H7z" class="fill-shape"/></svg><span>实心填充（推荐）</span></button>
+                    <button type="button" data-overlay-mode="boundary" title="只显示轮廓；中间空白仅为显示效果，ROI数据仍为实心"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="4" width="12" height="12" rx="2"/></svg><span>仅显示轮廓</span></button>
+                  </div>
+                  <div id="boundary-width-controls" class="slider-row wide hidden"><label for="boundary-width">边界线粗</label><input id="boundary-width" type="range" min="1" max="10" value="2"><span id="boundary-width-value">2 px</span></div>
+                </div>
+              </details>
+              <div class="button-row roi-visibility-actions"><button id="show-all-roi" type="button">全部打开</button><button id="hide-all-roi" type="button">全部关闭</button></div>
+              <div id="roi-layer-list" class="roi-layer-list" aria-label="选择要显示的ROI"></div>
+              <p class="hint">“仅显示轮廓”会让实心血管看起来像空心血管壁，但不改变ROI数据；切换患者时自动恢复实心填充。“对比”图层只影响画面，不会写入新保存文件。</p>
+            </section>
+          </div>
+        </details>
+        </div>
+
+        <div class="workflow-column" role="group" aria-label="AI 分割与修订">
+        <details class="workflow-group">
+            <summary><span class="group-index">03</span><span><b>半自动分割与增补</b><small>提示、半自动推理与当前 ROI 精修</small></span></summary>
+          <div class="workflow-group-body">
+            <section class="control-section model-section">
+              <div class="section-title"><h3>半自动模型</h3></div>
+              <select id="model-select" class="full" aria-label="分割模型" hidden></select>
+              <button id="run-auto" type="button" hidden aria-hidden="true">自动模型已移除</button>
+              <button id="run-interactive" class="full accent" type="button">运行 nnInteractive</button>
+              <div class="button-row"><button id="undo-prompt" type="button">撤销提示</button><button id="reset-prompts" type="button">重置提示</button><button id="cancel-task" type="button" disabled>取消推理</button></div>
+              <p id="model-status" class="hint">模型完成后会自动进入可编辑 ROI 工作层。</p>
+            </section>
+
+            <section class="control-section point-refine-section">
+              <div class="section-title"><h3>点提示增补</h3><span class="badge">当前 ROI</span></div>
+              <div class="button-row">
+                <button id="add-positive-point" class="accent" type="button">添加正点</button>
+                <button id="add-negative-point" class="danger-action compact-danger" type="button">添加负点</button>
+              </div>
+              <div class="slider-row"><label for="prompt-radius">点半径</label><input id="prompt-radius" type="range" min="1" max="30" value="3"><span id="prompt-radius-value">3 px</span></div>
+              <p id="point-prompt-status" class="hint">选择正点或负点，再在影像上点击需要补修的位置。</p>
+              <div class="button-row"><button id="run-point-refine" class="primary" type="button">补充分割</button><button id="clear-point-prompts" type="button">清除本轮点</button></div>
+              <p class="hint">结果继续写入当前 3D 工作层；保存前不会生成 NIfTI。</p>
+            </section>
+          </div>
+        </details>
+
+        <details class="workflow-group">
+          <summary><span class="group-index">04</span><span><b>修订与清理</b><small>工作层、连通区、强度与范围</small></span></summary>
+          <div class="workflow-group-body">
+            <section class="control-section editable-section">
+              <div class="section-title"><h3>可编辑 ROI</h3></div>
+              <div class="layer-flow"><span>模型原样</span><i>→</i><span>编辑缓存</span><i>→</i><span>NIfTI</span></div>
+              <button id="restore-original" class="full" type="button" disabled>恢复模型 / 载入原样</button>
+              <p id="workspace-state" class="hint">请先载入病例。</p>
+            </section>
+
+            <section class="control-section roi-cleanup-section">
+              <div class="section-title"><h3>ROI 清理</h3><span class="badge">可撤销</span></div>
+              <button id="activate-keep-component" class="full accent" type="button">保留点击位置的 3D 连通分支</button>
+              <p class="hint">先在当前层选择目标横截面，再沿 26 邻域保留对应 3D 分支。</p>
+              <label class="field-row"><span>组织排除</span><select id="intensity-preset"><option value="air">CT 空气（≤ -500 HU）</option><option value="fat">CT 脂肪（-190 至 -30 HU）</option><option value="custom">自定义原始强度</option></select></label>
+              <div class="number-grid">
+                <label><span>最小值</span><input id="intensity-min" type="number" step="1" placeholder="不限"></label>
+                <label><span>最大值</span><input id="intensity-max" type="number" step="1" value="-500" placeholder="不限"></label>
+              </div>
+              <label class="field-row"><span>处理范围</span><select id="intensity-scope"><option value="volume" selected>整个三维 ROI</option><option value="slice">仅当前显示层</option></select></label>
+              <button id="exclude-intensity" class="full danger-action" type="button">从当前 ROI 排除这些体素</button>
+              <p class="hint">空气/脂肪预设仅适用于 CT HU；只修改 ROI，不改变影像和参考层。</p>
+            </section>
+
+            <section class="control-section">
+              <div class="section-title"><h3>ROI 导航</h3></div>
+              <div class="nav-grid"><button data-nav="prev" type="button">上一层</button><button data-nav="first" type="button">首层</button><button data-nav="middle" type="button">中层</button><button data-nav="last" type="button">末层</button><button data-nav="next" type="button">下一层</button></div>
+            </section>
+
+            <section class="control-section range-trim-section">
+              <div class="section-title"><h3>ROI 范围删除</h3><span class="badge">含当前层</span></div>
+              <div class="range-trim-actions"><button id="trim-roi-left" type="button" class="danger-action" disabled>删除左侧</button><button id="trim-roi-right" type="button" class="danger-action" disabled>删除右侧</button></div>
+              <p class="hint">只删除当前标签；可使用底部撤销恢复。</p>
+              <div class="section-title compact-title"><h3>操作记录</h3></div>
+              <div id="range-operation-log" class="range-operation-log" aria-live="polite"><p class="hint">尚无范围删除记录</p></div>
+            </section>
+          </div>
+        </details>
+        </div>
+      </div>
+
+      <section class="control-section save-section" aria-label="保存 ROI">
+        <div class="save-heading"><div><span class="panel-kicker">FINAL OUTPUT</span><h3>保存 NIfTI</h3></div><div class="button-row history-actions"><button id="undo-edit" type="button">撤销</button><button id="redo-edit" type="button">重做</button></div></div>
+        <label class="field-row"><span>ROI 名称</span><input id="roi-name" type="text" value="ROI" maxlength="80" autocomplete="off"></label>
+        <button id="save-roi" class="full success" type="button">保存一个 ROI NIfTI</button>
+        <p class="hint">仅在患者文件夹生成 `roi_名称.nii.gz`。</p>
+      </section>
+      </section>
+
+      <section id="vascular-module-panel" class="module-panel vascular-module-panel hidden" hidden role="tabpanel" aria-labelledby="vascular-module-tab" data-vascular-model="hepatic_artery">
+        <div class="workflow-overview vascular-overview">
+          <div class="vascular-model-switch" role="group" aria-label="选择血管自动分割模型">
+            <button class="active" type="button" data-vascular-model="hepatic_artery" aria-pressed="true">
+              <span>原功能</span><strong>肝动脉分割</strong><small>HA 专用 · 肝区血管</small>
+            </button>
+            <button type="button" data-vascular-model="abdominal_artery" aria-pressed="false">
+              <span>新增</span><strong>全腹动脉分割</strong><small>BVM 2026 · SkeletonRecall</small>
+            </button>
+          </div>
+          <div class="workflow-heading">
+            <div><span id="vascular-model-kicker" class="panel-kicker">HEPATIC ARTERY · ORIGINAL</span><h2 id="vascular-model-title">肝动脉自动勾画</h2></div>
+            <span id="vascular-task-dot" class="task-dot" aria-label="血管分割状态"></span>
+          </div>
+          <p id="vascular-model-description" class="workflow-caption">原 HA 专用 nnU-Net 与肝脏约束后处理，生成肝动脉及肝内可见分支。</p>
+          <div id="vascular-model-contract" class="vascular-model-contract" aria-label="肝动脉模型契约">
+            <div><span>模型</span><strong id="vascular-contract-model">HA 专用 nnU-Net</strong></div>
+            <div><span>输入</span><strong id="vascular-contract-input">腹部动脉期增强 CT</strong></div>
+            <div><span>输出</span><strong id="vascular-contract-output">肝动脉二值 ROI</strong></div>
+            <div class="is-review"><span>用途</span><strong id="vascular-contract-purpose">原工作流 · 需人工复核</strong></div>
+          </div>
+        </div>
+
+        <div class="right-panel-scroll vascular-panel-scroll">
+          <section class="vascular-execution-card" aria-labelledby="vascular-execution-title">
+            <header class="vascular-card-heading">
+              <span class="group-index">01</span>
+              <div><h3 id="vascular-execution-title">当前病例一键自动勾画</h3><p id="vascular-execution-description">运行原肝动脉模型；批量模式按患者串行占用 GPU，单例失败不影响后续患者。</p></div>
+            </header>
+            <div class="vascular-current-case">
+              <span class="vascular-case-label">当前患者</span>
+              <strong id="vascular-current-case">尚未载入病例</strong>
+              <span id="vascular-readiness" class="status-chip is-missing">等待病例</span>
+              <code id="vascular-current-path" title="">—</code>
+            </div>
+            <div class="vascular-actions">
+              <button id="vascular-run-current" class="primary vascular-primary-action" type="button" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                <span>一键生成肝动脉 ROI</span>
+              </button>
+              <button id="vascular-run-batch" class="vascular-batch-action" type="button" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/></svg>
+                <span>批量处理所有患者</span>
+              </button>
+            </div>
+            <p id="vascular-batch-summary" class="hint" aria-live="polite">扫描总文件夹后显示可处理患者数。</p>
+            <p id="vascular-safety-note" class="vascular-safety-note"><strong>原功能已恢复：</strong>肝动脉结果保存为 <code>roi.nii.gz</code>；已有结果会先备份，再通过几何与连续性质控后原子替换。</p>
+          </section>
+
+          <section id="vascular-visualization-card" class="vascular-visualization-card" aria-labelledby="vascular-visualization-title">
+            <header class="vascular-card-heading">
+              <span class="group-index">02</span>
+              <div><h3 id="vascular-visualization-title">ROI 可视化</h3><p>选择当前患者的血管 ROI；二维叠加、图层显隐与三维表面使用同一份掩膜。</p></div>
+            </header>
+            <label class="vascular-roi-file-field" for="vascular-roi-select">
+              <span>可视化文件</span>
+              <select id="vascular-roi-select" class="full" aria-label="选择血管模块要显示的 ROI"></select>
+            </label>
+            <div class="vascular-roi-actions">
+              <button id="vascular-roi-load" class="primary" type="button" disabled>加载并显示</button>
+              <button id="vascular-render-3d" class="accent" type="button" disabled>3D 渲染</button>
+            </div>
+            <p id="vascular-roi-visual-status" class="vascular-roi-visual-status" role="status" aria-live="polite">肝动脉分割完成后会载入 roi.nii.gz；也可选择全腹动脉或其它 ROI 对照。</p>
+            <div class="vascular-roi-layer-heading">
+              <strong>显示图层</strong><span id="vascular-roi-visibility-count" class="badge">0 / 0</span>
+            </div>
+            <div class="vascular-roi-visibility-actions">
+              <button id="vascular-roi-show-all" type="button" disabled>全部打开</button>
+              <button id="vascular-roi-hide-all" type="button" disabled>全部关闭</button>
+            </div>
+            <div id="vascular-roi-layer-list" class="roi-layer-list vascular-roi-layer-list" aria-label="选择血管模块要显示的 ROI 图层"><div class="hint">当前没有可显示的 ROI</div></div>
+          </section>
+
+
+          <section id="vascular-task-panel" class="vascular-task-card" aria-labelledby="vascular-task-title">
+            <header class="vascular-card-heading vascular-task-heading">
+              <span id="vascular-task-icon" class="vascular-state-icon" aria-hidden="true"></span>
+              <div><h3 id="vascular-task-title">模型运行与质控</h3><p id="vascular-task-state" aria-live="polite">尚未启动肝动脉分割。</p></div>
+              <button id="vascular-cancel" class="ghost" type="button" disabled>取消任务</button>
+            </header>
+            <div class="vascular-progress-block">
+              <div class="vascular-progress-copy"><span id="vascular-progress-label">0%</span><span id="vascular-stage">等待运行</span></div>
+              <div id="vascular-progress" class="vascular-progress" role="progressbar" aria-label="血管分割进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+              <p id="vascular-current-patient" class="vascular-current-patient">—</p>
+            </div>
+            <div class="vascular-count-grid" aria-label="批量任务计数">
+              <div><span>成功</span><strong id="vascular-count-completed">0</strong></div>
+              <div><span>失败</span><strong id="vascular-count-failed">0</strong></div>
+              <div><span>跳过</span><strong id="vascular-count-skipped">0</strong></div>
+            </div>
+            <div id="vascular-output-block" class="vascular-output-block hidden">
+              <span>当前可用结果</span><code id="vascular-output-path" title="">—</code>
+              <small id="vascular-backup-path"></small>
+              <div id="vascular-quality-alert" class="vascular-quality-alert hidden" role="status" aria-live="polite">
+                <span id="vascular-quality-flag" class="vascular-quality-flag">研究预标注 / 必须人工复核</span>
+                <p id="vascular-quality-note"></p>
+              </div>
+            </div>
+            <div id="vascular-error" class="vascular-error hidden" role="alert"></div>
+            <details id="vascular-results" class="vascular-results hidden">
+              <summary>查看逐患者结果</summary>
+              <div id="vascular-result-list" class="vascular-result-list"></div>
+            </details>
+          </section>
+        </div>
+
+        <section class="vascular-footer" aria-label="血管模块说明">
+          <strong id="vascular-footer-title">肝动脉专用分割 + 肝脏约束与连续性修补</strong>
+          <p id="vascular-footer-description">原工作流完整保留，输出肝动脉及肝内可见分支；厚层恢复结果和远端细小分支必须逐层复核。</p>
+        </section>
+      </section>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="/static/roi3d.js?v=20260807.7" defer></script>
+  <script src="/static/app.js?v=20260811.1" defer></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local model configuration and downloaded weights
+config/model_paths.json
+models/**/weights/
+models/**/*.pth
+models/**/*.pt
+models/**/*.ckpt
+models/**/*.onnx
+*.partial.pth
+
+# Patient data, generated ROI output, and local runtime state
+*.nii
+*.nii.gz
+*.dcm
+*.zip
+.roi-workbench/
+.vascular_logs/
+logs/
+tmp/
+.cache/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

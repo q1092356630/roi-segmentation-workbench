@@ -1,0 +1,22 @@
+{
+  "labels": [
+    {
+      "id": 1,
+      "name": "organ",
+      "display_name": "器官",
+      "color": "#34c759",
+      "hotkey": "1",
+      "priority": 1,
+      "locked": false
+    },
+    {
+      "id": 2,
+      "name": "tumor",
+      "display_name": "肿瘤",
+      "color": "#ff3b30",
+      "hotkey": "2",
+      "priority": 10,
+      "locked": false
+    }
+  ]
+}

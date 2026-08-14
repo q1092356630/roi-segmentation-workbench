@@ -1,0 +1,5 @@
+{
+  "wsl_distro": "Ubuntu-22.04",
+  "python_path": "/home/your-user/.venvs/nninteractive/bin/python",
+  "model_path": "/home/your-user/.nninteractive/models/nnInteractive_v1.0"
+}
